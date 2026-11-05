@@ -28,33 +28,50 @@ function hasAnthropicKey() {
 
 async function callGemini(prompt, systemInstruction = '') {
   const apiKey = process.env.GEMINI_API_KEY;
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-  const body = {
-    contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    generationConfig: {
-      responseMimeType: 'application/json',
-      temperature: 0.1
+  const candidateModels = [
+    process.env.GEMINI_MODEL,
+    'gemini-flash-latest',
+    'gemini-3.8-flash',
+    'gemini-2.5-flash-lite',
+  ].filter(Boolean);
+
+  let lastError = null;
+
+  for (const model of candidateModels) {
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+      const body = {
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        generationConfig: {
+          responseMimeType: 'application/json',
+          temperature: 0.1
+        }
+      };
+      if (systemInstruction) {
+        body.systemInstruction = { parts: [{ text: systemInstruction }] };
+      }
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        lastError = new Error(`Gemini API (${model}) ${response.status}: ${errorText}`);
+        continue;
+      }
+
+      const data = await response.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (text) return text;
+    } catch (err) {
+      lastError = err;
     }
-  };
-  if (systemInstruction) {
-    body.systemInstruction = { parts: [{ text: systemInstruction }] };
   }
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Gemini API error ${response.status}: ${errorText}`);
-  }
-
-  const data = await response.json();
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) throw new Error('No content in Gemini response');
-  return text;
+  throw lastError || new Error('All Gemini model candidates failed');
 }
 
 async function callAnthropic(prompt) {
