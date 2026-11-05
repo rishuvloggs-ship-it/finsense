@@ -18,3 +18,4 @@ Write-Host "Opening your browser in 4 seconds..." -ForegroundColor Gray
 
 Start-Sleep -Seconds 4
 Start-Process "http://localhost:5173"
+
