@@ -30,9 +30,8 @@ async function callGemini(prompt, systemInstruction = '') {
   const apiKey = process.env.GEMINI_API_KEY;
   const candidateModels = [
     process.env.GEMINI_MODEL,
-    'gemini-flash-latest',
+    'gemini-3.5-flash-lite',
     'gemini-3.8-flash',
-    'gemini-2.5-flash-lite',
   ].filter(Boolean);
 
   let lastError = null;
